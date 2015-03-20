@@ -10,6 +10,10 @@ authenticated mail users.
 Because of this redis DB, this version has an additional requirement of
 the perl module Redis::Client
 
+The redis DB can be downloaded from http://redis.io/ 
+Make sure, the redis DB is installed on the same host as this daemon is
+running and is listening on port 6379.
+
 All the other staff is like it is described in the orignal README of
 mschmitt
 
