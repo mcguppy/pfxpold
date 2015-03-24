@@ -3,6 +3,22 @@
 #
 # copy this scprit to /etc/init.d/pfxpold and perform a "update-rc.d pfxpold defaults"
 #
+###############
+# SysV Init Information
+# chkconfig: - 58 74
+# description: Postfix extensible policy daemon
+### BEGIN INIT INFO
+# Provides: pfxpold
+# Required-Start: $network $local_fs $remote_fs
+# Required-Stop: $network $local_fs $remote_fs
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Should-Start: $syslog $named
+# Should-Stop: $syslog $named
+# Short-Description: start and stop pfxpold
+# Description: Postfix extensible policy daemon
+### END INIT INFO
+
 
 
 # Carry out specific functions when asked to by the system
