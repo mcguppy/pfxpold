@@ -1,0 +1,24 @@
+#! /bin/sh
+# /etc/init.d/pfxpold
+#
+# copy this scprit to /etc/init.d/pfxpold and perform a "update-rc.d pfxpold defaults"
+#
+
+
+# Carry out specific functions when asked to by the system
+case "$1" in
+  start)
+    echo "Starting pfxpold ..."
+    /opt/pfxpold/pfxpold
+    ;;
+  stop)
+    echo "Stopping pfxpold ..."
+    killall pfxpold
+    ;;
+  *)
+    echo "Usage: /etc/init.d/pfxpold {start|stop}"
+    exit 1
+    ;;
+esac
+
+exit 0

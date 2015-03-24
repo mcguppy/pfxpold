@@ -2,7 +2,6 @@ package PFXCheck;
 
 use strict;
 use warnings;
-#use Data::Dumper;
 use Redis::Client;
 
 our $VERSION = '0.1';
@@ -10,7 +9,7 @@ our $VERSION = '0.1';
 my $REDIS_HOST = "localhost";
 my $REDIS_PORT = 6379;
 
-my $dayLimit = 500; # this is the default daily limit, if no value "dayLimit" in redis is set
+my $DAY_LIMIT = 500; # this is the default daily limit, if no value "dayLimit" in redis is set
 
 my $REJECT_MESSAGE = "REJECT 590 daily mail limit reached";
 
@@ -27,6 +26,7 @@ sub do_check($){
 
 	my $self      = shift @_;
 	my $querydata = shift @_;
+	my $dayLimit = $DAY_LIMIT;
 
 	# Check if all data was sent
 	unless ($querydata->{'sasl_username'}){
@@ -79,15 +79,110 @@ sub do_check($){
 		my $newTotalCounter = $totalCounter + $nbrOfRecipients;
 		$self->{'dbh'}->hset($sasl_username, 'dayCounter' => $newDayCounter);
 		$self->{'dbh'}->hset($sasl_username, 'totalCounter' => $newTotalCounter);
-		&main::dolog("info", "PFX-PERMIT: sasl_username=$sasl_username --> day counter: $newDayCounter; day limit: $dayLimit; total-counter (since last reset): $newTotalCounter");
+		&main::dolog("info", "PERMIT: sasl_username=$sasl_username --> day counter: $newDayCounter; day limit: $dayLimit; total-counter (since last reset): $newTotalCounter");
     		undef $self->{'dbh'};
 		return "DUNNO"
 	} else {
 		# limited User has reached MAXMAIL
-		&main::dolog("warning", "PFX-DENY: sasl_username=$sasl_username --> day counter: $dayCounter; day limit: $dayLimit; Nbr of mails not sent because of day limit: $nbrOfRecipients; total-counter (since last reset): $totalCounter");
+		&main::dolog("warning", "DENY: sasl_username=$sasl_username --> day counter: $dayCounter; day limit: $dayLimit; Nbr of mails not sent because of day limit: $nbrOfRecipients; total-counter (since last reset): $totalCounter");
        		undef $self->{'dbh'};
 		return "$REJECT_MESSAGE";
 	}
 	
+}
+
+sub getStats() {
+	my $self      = shift @_;
+        # Connect to DB
+        $self->{'dbh'} = Redis::Client->new(
+        	server => "$REDIS_HOST:$REDIS_PORT",
+                reconnect => 2,
+                every => 100000
+        ) or die "Cant connect to redis server : $!";
+
+
+	my $stats = "sender-name\t\tday-limit\tday-counter\ttotal-counter\n----------------------------------------------------------------------\n";
+	
+	# get all keys
+	my @keys = $self->{'dbh'}->keys( '*' );
+	# loop all keys
+	foreach my $senderName (sort @keys) {
+		my $dayLimit = $DAY_LIMIT;
+		my $dayCounter = 0;
+		my $totalCounter = 0;
+
+		if($self->{'dbh'}->hexists($senderName, 'dayLimit')){
+			$dayLimit = $self->{'dbh'}->hget($senderName, 'dayLimit');
+		}
+
+		if($self->{'dbh'}->hexists($senderName, 'dayCounter')){
+			$dayCounter = $self->{'dbh'}->hget($senderName, 'dayCounter');
+		}
+
+		if($self->{'dbh'}->hexists($senderName, 'totalCounter')){
+			$totalCounter = $self->{'dbh'}->hget($senderName, 'totalCounter');
+		}
+
+		$stats = $stats .  "$senderName\t$dayLimit\t\t$dayCounter\t\t$totalCounter\n";
+	}	
+	undef $self->{'dbh'};
+	return $stats;
+}
+
+sub resetDayCounter() {
+	my $self      = shift @_;
+        # Connect to DB
+        $self->{'dbh'} = Redis::Client->new(
+        	server => "$REDIS_HOST:$REDIS_PORT",
+                reconnect => 2,
+                every => 100000
+        ) or die "Cant connect to redis server : $!";
+
+        # get all keys
+        my @keys = $self->{'dbh'}->keys( '*' );
+        # loop all keys
+        foreach my $senderName (@keys) {
+		$self->{'dbh'}->hdel($senderName,'dayCounter');
+	}
+	undef $self->{'dbh'};
+	return 0;
+}
+
+sub resetTotalCounter() {
+	my $self      = shift @_;
+        # Connect to DB
+        $self->{'dbh'} = Redis::Client->new(
+        	server => "$REDIS_HOST:$REDIS_PORT",
+                reconnect => 2,
+                every => 100000
+        ) or die "Cant connect to redis server : $!";
+
+        # get all keys
+        my @keys = $self->{'dbh'}->keys( '*' );
+        # loop all keys
+        foreach my $senderName (@keys) {
+		$self->{'dbh'}->hdel($senderName,'totalCounter');
+	}
+	undef $self->{'dbh'};
+	return 0;
+}
+
+sub deleteAllKeys() {
+	my $self      = shift @_;
+        # Connect to DB
+        $self->{'dbh'} = Redis::Client->new(
+        	server => "$REDIS_HOST:$REDIS_PORT",
+                reconnect => 2,
+                every => 100000
+        ) or die "Cant connect to redis server : $!";
+
+        # get all keys
+        my @keys = $self->{'dbh'}->keys( '*' );
+        # loop all keys
+        foreach my $senderName (@keys) {
+		$self->{'dbh'}->del($senderName);
+	}
+	undef $self->{'dbh'};
+	return 0;
 }
 1;

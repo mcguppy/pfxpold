@@ -1,0 +1,2 @@
+# save this file to /etc/cron.d, so the day counter will deleted every midnight
+0  0  *  *  *  root  /opt/pfxpold/resetDayCounter.pl -f
